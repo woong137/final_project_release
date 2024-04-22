@@ -24,7 +24,8 @@ def get_cartesian(s, d, mapx, mapy, maps):
     x = mapx[prev_wp] + seg_s * seg_x + d * -seg_y
     y = mapy[prev_wp] + seg_s * seg_y + d * seg_x
 
-    return x, y 
+    return x, y
+
 
 def get_frenet(x, y, mapx, mapy, maps):
     """
@@ -57,24 +58,25 @@ def get_frenet(x, y, mapx, mapy, maps):
     # to the distance of the projection
     s = maps[closest_wp] + proj
 
-    return s,d
-    
-    
+    return s, d
+
+
 def moving_average(data, window_size):
     moving_averages = []
     window_sum = 0
-    
+
     # 처음 window_size만큼의 요소에 대한 합을 구함
     for i in range(window_size):
         window_sum += data[i]
         moving_averages.append(window_sum / (i + 1))
-    
+
     # 이후 요소부터는 이동평균을 계산하여 리스트에 추가
     for i in range(window_size, len(data)):
         window_sum += data[i] - data[i - window_size]
         moving_averages.append(window_sum / window_size)
-    
+
     return moving_averages
+
 
 def check_intersection(p1, p2, p3, p4):
     """ 
@@ -86,12 +88,13 @@ def check_intersection(p1, p2, p3, p4):
 
     return ccw(p1, p3, p4) != ccw(p2, p3, p4) and ccw(p1, p2, p3) != ccw(p1, p2, p4)
 
+
 def segment_intersection(p1, p2, p3, p4):
     """ 
     Find the intersection point of line segments (p1, p2) and (p3, p4) 
     if they intersect.
     """
-    det = lambda a, b: a[0] * b[1] - a[1] * b[0]
+    def det(a, b): return a[0] * b[1] - a[1] * b[0]
     xdiff = (p1[0] - p2[0], p3[0] - p4[0])
     ydiff = (p1[1] - p2[1], p3[1] - p4[1])
     div = det(xdiff, ydiff)
@@ -103,6 +106,7 @@ def segment_intersection(p1, p2, p3, p4):
     y = det(d, ydiff) / div
     return (x, y)
 
+
 def find_intersections(points1, points2):
     """
     Check for intersections between two lists of points that define two lines.
@@ -112,11 +116,13 @@ def find_intersections(points1, points2):
     for i in range(len(points1) - 1):
         for j in range(len(points2) - 1):
             if check_intersection(points1[i], points1[i+1], points2[j], points2[j+1]):
-                intersect = segment_intersection(points1[i], points1[i+1], points2[j], points2[j+1])
+                intersect = segment_intersection(
+                    points1[i], points1[i+1], points2[j], points2[j+1])
                 if intersect:
-                    intersections.append((intersect, (i,j)))
-                    
+                    intersections.append((intersect, (i, j)))
+
     return intersections
+
 
 def find_intersections_with_indices(points1, points2):
     """
@@ -127,9 +133,9 @@ def find_intersections_with_indices(points1, points2):
     for i in range(len(points1) - 1):
         for j in range(len(points2) - 1):
             if check_intersection(points1[i], points1[i+1], points2[j], points2[j+1]):
-                intersect = segment_intersection(points1[i], points1[i+1], points2[j], points2[j+1])
+                intersect = segment_intersection(
+                    points1[i], points1[i+1], points2[j], points2[j+1])
                 if intersect:
                     intersections.append((intersect, (i, j)))
-                    
-    return intersections
 
+    return intersections
