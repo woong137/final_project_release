@@ -139,10 +139,13 @@ class Environments(object):
                 sensor_info = self.vehicles[id_].get_measure(self.vehicles)
                 local_lane_info = self.vehicles[id_].get_local_path()
 
-                """
-                To Do 
-                
-                """
+                ##TODO
+                # 아래의 정보들을 활용하여, SDV가 주변 agent와 충돌 없이
+                # 교차로를 통과하여 target lane에 가기 위한 종 / 횡 방향 제어기 설계
+                # - sensor info
+                # - local lane info
+                # - SDV info : self.vehicles[id_].~ [x, y, h, v, s, d]
+                # - Global map info : self.map_pt / self.connectivity\
 
                 self.vehicles[id_].step_manual(ax=0.2, steer=0)
 
