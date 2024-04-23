@@ -136,18 +136,31 @@ class Environments(object):
 
         for id_ in self.vehicles.keys():
             if id_ == 0:
-                sensor_info = self.vehicles[id_].get_measure(self.vehicles)
+                sensor_info_local = self.vehicles[id_].get_measure(
+                    self.vehicles)
                 local_lane_info = self.vehicles[id_].get_local_path()
-
-                ##TODO
+                # TODO
                 # 아래의 정보들을 활용하여, SDV가 주변 agent와 충돌 없이
                 # 교차로를 통과하여 target lane에 가기 위한 종 / 횡 방향 제어기 설계
-                # - sensor info
-                # - local lane info
+                # - sensor info [obj id, rel x, rel y, rel h, rel vx, rel vy]
+                # - local lane info [x, y, h, R]
                 # - SDV info : self.vehicles[id_].~ [x, y, h, v, s, d]
                 # - Global map info : self.map_pt / self.connectivity\
 
-                self.vehicles[id_].step_manual(ax=0.2, steer=0)
+                # sensor_info[i]: [ obj id, rel x, rel y, rel h, rel vx, rel vy ]
+                # local frame to global frame
+                sensor_info_global = []  # [ obj id, x, y, h, vx, vy ]
+                for i in range(len(sensor_info_local)):
+                    x, y, h, vx, vy = local_to_global(
+                        self.vehicles[id_].x, self.vehicles[id_].y, self.vehicles[id_].h, self.vehicles[id_].v,
+                        sensor_info_local[i][1], sensor_info_local[i][2], sensor_info_local[i][3], sensor_info_local[i][4], sensor_info_local[i][5])
+                    sensor_info_global.append(
+                        [sensor_info_local[i][0], x, y, h, vx, vy])
+                    if i == 0:
+                        print("local to global: ", sensor_info_global[i])
+                        print("=====================================")
+
+                self.vehicles[id_].step_manual(ax=0.2, steer=5)
 
             if id_ > 0:
                 self.vehicles[id_].step_auto(
