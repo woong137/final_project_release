@@ -13,6 +13,7 @@ import matplotlib.animation as animation
 from IPython.display import HTML
 from utils import *
 from agent import agent
+from kalman_filter import *
 
 
 import tf
@@ -26,14 +27,16 @@ from std_msgs.msg import Float32, Float64, Header, ColorRGBA, UInt8, String, Flo
 
 
 class Environments(object):
-    def __init__(self, course_idx, dt=0.1, min_num_agent=8):
+    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_saved_data=10):
 
         self.spawn_id = 0
         self.vehicles = {}
         self.int_pt_list = {}
+        self.sensor_info_dict = {}
         self.min_num_agent = min_num_agent
         self.dt = dt
         self.course_idx = course_idx
+        self.num_saved_data = num_saved_data
 
         self.initialize()
 
@@ -132,14 +135,14 @@ class Environments(object):
 
         return delete_agent_list
 
-    def run(self):
+    def run(self):  # 10hz로 동작(main.py의 r = rospy.Rate(10)과 동일)
 
         for id_ in self.vehicles.keys():
             if id_ == 0:
                 sensor_info_local = self.vehicles[id_].get_measure(
                     self.vehicles)
                 local_lane_info = self.vehicles[id_].get_local_path()
-                # TODO
+                # TODO:
                 # 아래의 정보들을 활용하여, SDV가 주변 agent와 충돌 없이
                 # 교차로를 통과하여 target lane에 가기 위한 종 / 횡 방향 제어기 설계
                 # - sensor info [obj id, rel x, rel y, rel h, rel vx, rel vy]
@@ -147,24 +150,49 @@ class Environments(object):
                 # - SDV info : self.vehicles[id_].~ [x, y, h, v, s, d]
                 # - Global map info : self.map_pt / self.connectivity\
 
-                # sensor_info[i]: [ obj id, rel x, rel y, rel h, rel vx, rel vy ]
                 # local frame to global frame
-                sensor_info_global = []  # [ obj id, x, y, h, vx, vy ]
-                for i in range(len(sensor_info_local)):
+                sensor_info_global = []  # [[obj id, rel x, rel y, rel h, rel vx, rel vy], …]
+                for i in (sensor_info_local):
+                    obj_id, rel_x, rel_y, rel_h, rel_vx, rel_vy = i
                     x, y, h, vx, vy = local_to_global(
                         self.vehicles[id_].x, self.vehicles[id_].y, self.vehicles[id_].h, self.vehicles[id_].v,
-                        sensor_info_local[i][1], sensor_info_local[i][2], sensor_info_local[i][3], sensor_info_local[i][4], sensor_info_local[i][5])
-                    sensor_info_global.append(
-                        [sensor_info_local[i][0], x, y, h, vx, vy])
-                    if i == 0:
-                        print("local to global: ", sensor_info_global[i])
-                        print("=====================================")
+                        rel_x, rel_y, rel_h, rel_vx, rel_vy)
+                    sensor_info_global.append([obj_id, x, y, h, vx, vy])
 
-                self.vehicles[id_].step_manual(ax=0.2, steer=5)
+                # self.sensor_info_dict에 각 agent의 정보 저장
+                for info in (sensor_info_global):
+                    obj_id, x, y, h, vx, vy = info
+                    v = (vx**2 + vy**2) ** 0.5
+                    # 해당 obj_id가 sensor_info_dict에 이미 존재하는지 확인
+                    if obj_id in self.sensor_info_dict:
+                        # 이미 존재하면 해당 obj_id의 리스트에 새로운 데이터 추가
+                        self.sensor_info_dict[obj_id].append([x, y, h, v])
+                    else:
+                        # 존재하지 않으면 새로운 키-값 쌍 추가
+                        self.sensor_info_dict[obj_id] = [[x, y, h, v]]
+                    # obj_id당 최대 self.num_saved_data 개까지만 저장
+                    if len(self.sensor_info_dict[obj_id]) > self.num_saved_data:
+                        self.sensor_info_dict[obj_id].pop(0)
+
+                self.vehicles[id_].step_manual(ax=0.2, steer=0)
 
             if id_ > 0:
                 self.vehicles[id_].step_auto(
                     self.vehicles, self.int_pt_list[id_])
+
+            # Kalman Filter를 활용하여, 각 agent의 상태를 추정
+            model = CTRA(0.1)
+
+            kf = Extended_KalmanFilter(6, 4)
+
+            kf.F = model.step
+            kf.JA = model.JA
+            kf.H = model.H
+            kf.JH = model.JH
+
+            #x_init = [x, y, v, a, theta, theta_rate]
+            x_init = [self.sensor_info_dict[id_][1][0],
+                      self.sensor_info_dict[id_][1][1], 0, 0, 0, 0]
 
     def respawn(self):
         if len(self.vehicles) < self.min_num_agent:
