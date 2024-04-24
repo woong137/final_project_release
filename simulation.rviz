@@ -5,11 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Global Options1
-        - /Maps1
         - /Objs1
-        - /RobotModel1
-        - /MarkerArray4
-        - /MarkerArray5
       Splitter Ratio: 0.579365074634552
     Tree Height: 694
   - Class: rviz/Selection
@@ -55,22 +51,21 @@ Visualization Manager:
         "": true
       Queue Size: 100
       Value: true
-    - Alpha: 1
-      Class: rviz/RobotModel
-      Collision Enabled: false
-      Enabled: false
-      Links:
-        All Links Enabled: true
-        Expand Joint Details: false
-        Expand Link Details: false
-        Expand Tree: false
-        Link Tree Style: Links in Alphabetic Order
-      Name: RobotModel
-      Robot Description: robot_description
-      TF Prefix: ""
-      Update Interval: 0
-      Value: false
-      Visual Enabled: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /rviz/kf_pred_path
+      Name: MarkerArray
+      Namespaces:
+        1: true
+        2: true
+        3: true
+        4: true
+        5: true
+        6: true
+        7: true
+        8: true
+      Queue Size: 100
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /rviz/planner
@@ -113,20 +108,6 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /rviz/kf_pred_path
-      Name: MarkerArray
-      Namespaces:
-        1: true
-        2: true
-        3: true
-        4: true
-        5: true
-        6: true
-        7: true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
       Marker Topic: /rviz/kalman_history_path
       Name: MarkerArray
       Namespaces:
@@ -137,6 +118,7 @@ Visualization Manager:
         5: true
         6: true
         7: true
+        8: true
       Queue Size: 100
       Value: true
   Enabled: true
