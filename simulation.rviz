@@ -9,6 +9,7 @@ Panels:
         - /Objs1
         - /RobotModel1
         - /MarkerArray4
+        - /MarkerArray5
       Splitter Ratio: 0.579365074634552
     Tree Height: 694
   - Class: rviz/Selection
@@ -128,12 +129,34 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /rviz/pred_path
+      Marker Topic: /rviz/kf_pred_path
       Name: MarkerArray
       Namespaces:
         1: true
         10: true
         11: true
+        12: true
+        13: true
+        2: true
+        3: true
+        4: true
+        5: true
+        6: true
+        7: true
+        8: true
+        9: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /rviz/model_pred_path
+      Name: MarkerArray
+      Namespaces:
+        1: true
+        10: true
+        11: true
+        12: true
+        13: true
         2: true
         3: true
         4: true
@@ -172,7 +195,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 188.8070068359375
+      Distance: 185.58477783203125
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
