@@ -33,6 +33,8 @@ class Environments(object):
         self.vehicles = {}
         self.int_pt_list = {}
         self.sensor_info_dict = {}
+        self.kalman_filter_dict = {}
+        self.pred_dict = {}
         self.min_num_agent = min_num_agent
         self.dt = dt
         self.course_idx = course_idx
@@ -170,7 +172,7 @@ class Environments(object):
                     else:
                         # 존재하지 않으면 새로운 키-값 쌍 추가
                         self.sensor_info_dict[obj_id] = [[x, y, h, v]]
-                    # obj_id당 최대 self.num_saved_data 개까지만 저장
+                    # obj_id당 최대 self.num_saved_data개까지만 저장 (나중에 a, yaw_rate 추가한 후 마지막 항은 사용 X)
                     if len(self.sensor_info_dict[obj_id]) > self.num_saved_data:
                         self.sensor_info_dict[obj_id].pop(0)
 
@@ -180,19 +182,65 @@ class Environments(object):
                 self.vehicles[id_].step_auto(
                     self.vehicles, self.int_pt_list[id_])
 
-            # Kalman Filter를 활용하여, 각 agent의 상태를 추정
-            model = CTRA(0.1)
+            # self.sensor_info_dict에 a와 yaw_rate 추가
+            # self.sensor_info_dict[id_]: [[x, y, h, v, a, yaw_rate], ...]
+            if id_ > 0 and id_ in self.sensor_info_dict and len(self.sensor_info_dict[id_]) > 1:
+                for i in range(len(self.sensor_info_dict[id_])-1):
+                    x1, y1, h1, v1, *_ = self.sensor_info_dict[id_][i]
+                    x2, y2, h2, v2, *_ = self.sensor_info_dict[id_][i+1]
+                    a = ((v2 - v1) / self.dt)
+                    yaw_rate = (h2 - h1) / self.dt
+                    if len(self.sensor_info_dict[id_][i]) < 6:
+                        self.sensor_info_dict[id_][i].append(a)
+                        self.sensor_info_dict[id_][i].append(yaw_rate)
+                    else:
+                        self.sensor_info_dict[id_][i][4] = a
+                        self.sensor_info_dict[id_][i][5] = yaw_rate
 
-            kf = Extended_KalmanFilter(6, 4)
+                # x_init = [x, y, v, a, theta, theta_rate]
+                x_init = [self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0]
+                        [3], self.sensor_info_dict[id_][0][4], self.sensor_info_dict[id_][0][2], self.sensor_info_dict[id_][0][5]]
 
-            kf.F = model.step
-            kf.JA = model.JA
-            kf.H = model.H
-            kf.JH = model.JH
+                # Kalman Filter를 활용하여, 각 agent의 상태를 추정
+                model = CTRA(self.dt)
 
-            #x_init = [x, y, v, a, theta, theta_rate]
-            x_init = [self.sensor_info_dict[id_][1][0],
-                      self.sensor_info_dict[id_][1][1], 0, 0, 0, 0]
+                kf = Extended_KalmanFilter(6, 4)
+
+                kf.F = model.step
+                kf.JA = model.JA
+                kf.H = model.H
+                kf.JH = model.JH
+                kf.x = x_init
+
+                X = []
+                for i in range(len(self.sensor_info_dict[id_]) - 1):
+                    # x = [x, y, v, a, theta, theta_rate]
+                    # z = [x, y, v, theta]
+                    x = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
+                        self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][4],
+                        self.sensor_info_dict[id_][i][2], self.sensor_info_dict[id_][i][5]]
+                    z = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
+                        self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][2]]
+                    kf.predict(Q=np.diag([1, 1, 1, 10, 10, 100]))
+                    kf.correction(z=z, R=np.diag([1, 1, 1, 1]))
+
+                    model_kf = copy.deepcopy(model)
+
+                    XX = model_kf.pred(kf.x, t_pred=2)
+                    YY = model.pred(x, t_pred=2)
+
+                    X.append(kf.x)
+
+                # X: Kalman Filter로 추정한 상태, XX: Kalman Filter로 추정한 상태의 예측값, YY: 실제 상태의 예측값
+                print(X)
+                print(self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1])
+                print(self.sensor_info_dict[id_][-1][0], self.sensor_info_dict[id_][-1][1])
+                print(XX[:, 0], XX[:, 1])
+                print(YY[:, 0], YY[:, 1])
+                print("====================")
+
+
+        # print(self.sensor_info_dict)
 
     def respawn(self):
         if len(self.vehicles) < self.min_num_agent:
