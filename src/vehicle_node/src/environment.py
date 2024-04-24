@@ -14,6 +14,7 @@ from IPython.display import HTML
 from utils import *
 from agent import agent
 from kalman_filter import *
+from imm_filter import *
 
 
 import tf
@@ -27,7 +28,7 @@ from std_msgs.msg import Float32, Float64, Header, ColorRGBA, UInt8, String, Flo
 
 
 class Environments(object):
-    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_kalman_data=10, t_pred=1):
+    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_kalman_data=10, t_pred=1.5):
 
         self.spawn_id = 0
         self.vehicles = {}
@@ -200,60 +201,55 @@ class Environments(object):
                         self.sensor_info_dict[id_][i][4] = a
                         self.sensor_info_dict[id_][i][5] = yaw_rate
 
-                #######################칼만 필터####################################
+                """
+                IMM Filtering
+                """
+                num_of_model = 2
+                mat_trans = np.array([[0.85, 0.15], [0.15, 0.85]])
+                mu = [1.0, 0.0]
 
-                # x_init = [x, y, v, a, theta, theta_rate]
-                x_init = [self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0]
-                          [3], 0, self.sensor_info_dict[id_][0][2], 0]
+                filters = [Extended_KalmanFilter(
+                    5, 4), Extended_KalmanFilter(6, 4)]
+                models = [CA(), CTRA()]
 
-                # Kalman Filter를 활용하여, 각 agent의 상태를 추정
-                model = CTRA(self.dt)
+                Q_list = [[0.1, 0.1, 0.1, 0.1, 0.001],
+                          [0.1, 0.1, 0.1, 0.1, 0.001, 0.01]]
 
-                kf = Extended_KalmanFilter(6, 4)
+                x = [np.array([self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0][3], 0, self.sensor_info_dict[id_][0][2]]),
+                     np.array([self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0][3], 0, self.sensor_info_dict[id_][0][2], 0])]
 
-                kf.F = model.step
-                kf.JA = model.JA
-                kf.H = model.H
-                kf.JH = model.JH
-                kf.x = x_init
+                for i in range(len(filters)):
+                    filters[i].F = models[i].step
+                    filters[i].H = models[i].H
+                    filters[i].JA = models[i].JA
+                    filters[i].JH = models[i].JH
+                    filters[i].Q = np.diag(Q_list[i])
+                    filters[i].R = np.diag([0.1, 0.1, 0.1, 0.1])
+                    filters[i].x = x[i]
 
-                X = [x_init]
+                IMM = IMM_filter(filters, mu, mat_trans)
+                MM = [mu]
+                X = [x[1]]
+                Traj = []
+
                 for i in range(len(self.sensor_info_dict[id_]) - 1):
-                    # x = [x, y, v, a, theta, theta_rate]
-                    # z = [x, y, v, theta]
-                    x = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
-                         self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][4],
-                         self.sensor_info_dict[id_][i][2], self.sensor_info_dict[id_][i][5]]
+
                     z = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
                          self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][2]]
-                    kf.predict(Q=np.diag([1, 1, 1, 100, 100, 100]))
-                    kf.correction(z=z, R=np.diag([1, 1, 0.01, 0.01]))
 
-                    model_kf = copy.deepcopy(model)
-                    # X: Kalman Filter로 추정한 상태, XX: Kalman Filter로 추정한 상태의 예측값, YY: 실제 상태의 예측값
-                    XX = model_kf.pred(kf.x, self.t_pred)
-                    YY = model.pred(x, self.t_pred)
+                    IMM.prediction()
+                    IMM.merging(z)
 
-                    X.append(kf.x)
-                ###########################################################################
+                    traj = IMM.predict(self.t_pred)
+                    Traj.append(traj)
+                    MM.append(IMM.mu.copy())
+                    X.append(IMM.x.copy())
 
                 # 해당 agent의 Kalman Filter 결과 저장
                 # {obj_id: [x, y, v, a, theta, theta_rate] * (t_pred / self.dt), ...}
                 self.kalman_filter_dict[id_] = X
-                self.kf_pred_dict[id_] = XX
-                self.model_pred_dict[id_] = YY
+                self.kf_pred_dict[id_] = traj
 
-            if id_ == 1:
-                print("------sensor_info_global------")
-                print(sensor_info_global[0])
-                print("------sensor_info_dict------")
-                print(self.sensor_info_dict[1])
-                print("------kalman_filter_dict------")
-                print(self.kalman_filter_dict[1] if 1 in self.kalman_filter_dict else [])
-                print("------kf_pred_dict------")
-                print(self.kf_pred_dict[1] if 1 in self.kf_pred_dict else [])
-                print(len(self.sensor_info_dict[1]))
-                print("===============================")
 
     def respawn(self):
         if len(self.vehicles) < self.min_num_agent:

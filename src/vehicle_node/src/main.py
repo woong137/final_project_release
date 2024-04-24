@@ -56,7 +56,7 @@ class Simulation(object):
             self.pub_track()
             self.pub_map()
             self.pub_kf_pred()
-            self.pub_model_pred()
+            self.pub_kalman_history()
 
             self.delete_agent()
 
@@ -178,8 +178,7 @@ class Simulation(object):
             text.action = Marker.ADD
             text.color = ColorRGBA(1, 1, 1, 1)
             text.scale.z = 5
-            text.text = str(id_) + " (" + str(round(self.env.vehicles[id_].x, 2)) + ", " + str(
-                round(self.env.vehicles[id_].y, 2)) + ")"
+            text.text = str(id_)
             text.pose.position = Point(
                 self.env.vehicles[id_].x, self.env.vehicles[id_].y, 5)
 
@@ -253,10 +252,10 @@ class Simulation(object):
 
         self.kf_pred_path.publish(Paths)
 
-    def pub_model_pred(self):
+    def pub_kalman_history(self):
         Paths = MarkerArray()
 
-        for obj_id, pred_data in self.env.model_pred_dict.items():
+        for obj_id, pred_data in self.env.kalman_filter_dict.items():
             path = Marker()
             path.header.frame_id = "base_link"
             path.header.stamp = rospy.Time.now()
@@ -267,9 +266,9 @@ class Simulation(object):
             path.pose.orientation.w = 1.0
             path.scale.x = 0.7
             path.color.a = 1.0  # Alpha
-            path.color.r = 1.0  # Red
+            path.color.r = 0.0  # Red
             path.color.g = 0.0  # Green
-            path.color.b = 0.0  # Blue
+            path.color.b = 1.0  # Blue
 
             # pred_data: [[x, y, v, a, theta, theta_rate],...]
             for i in range(len(pred_data)):
@@ -281,7 +280,7 @@ class Simulation(object):
 
             Paths.markers.append(path)
 
-        self.model_pred_path.publish(Paths)
+        self.kalman_history_path.publish(Paths)
 
     def set_subscriber(self):
         rospy.Subscriber('/cmd_vel', Twist, self.callback_plot, queue_size=1)
@@ -297,19 +296,14 @@ class Simulation(object):
             '/rviz/sur_accel_plot', MarkerArray, queue_size=1)
         self.sur_decel_plot = rospy.Publisher(
             '/rviz/sur_decel_plot', MarkerArray, queue_size=1)
-
         self.text_plot = rospy.Publisher(
             '/rviz/text', MarkerArray, queue_size=1)
-
-        # Map Point
         self.map_plot = rospy.Publisher(
             '/rviz/maps', MarkerArray, queue_size=1)
-
         self.kf_pred_path = rospy.Publisher(
             '/rviz/kf_pred_path', MarkerArray, queue_size=1)
-
-        self.model_pred_path = rospy.Publisher(
-            '/rviz/model_pred_path', MarkerArray, queue_size=1)
+        self.kalman_history_path = rospy.Publisher(
+            '/rviz/kalman_history_path', MarkerArray, queue_size=1)
 
 
 if __name__ == '__main__':
