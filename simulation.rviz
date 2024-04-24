@@ -8,6 +8,7 @@ Panels:
         - /Maps1
         - /Objs1
         - /RobotModel1
+        - /MarkerArray4
       Splitter Ratio: 0.579365074634552
     Tree Height: 694
   - Class: rviz/Selection
@@ -42,7 +43,7 @@ Visualization Manager:
       Marker Topic: /rviz/maps
       Name: Maps
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -50,7 +51,7 @@ Visualization Manager:
       Marker Topic: /rviz/sur_obj_pose
       Name: Objs
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -82,7 +83,7 @@ Visualization Manager:
       Marker Topic: /rviz/text
       Name: text
       Namespaces:
-        {}
+        text: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -106,7 +107,7 @@ Visualization Manager:
       Marker Topic: /rviz/sur_accel_plot
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -114,7 +115,7 @@ Visualization Manager:
       Marker Topic: /rviz/sur_decel_plot
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -122,7 +123,25 @@ Visualization Manager:
       Marker Topic: /rviz/sur_v_plot
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /rviz/pred_path
+      Name: MarkerArray
+      Namespaces:
+        1: true
+        10: true
+        11: true
+        2: true
+        3: true
+        4: true
+        5: true
+        6: true
+        7: true
+        8: true
+        9: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -153,7 +172,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 233.41650390625
+      Distance: 188.8070068359375
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -161,17 +180,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 46.61762237548828
-        Y: 21.18343162536621
-        Z: -2.6151123046875
+        X: 68.72118377685547
+        Y: 48.62479019165039
+        Z: -2.7477447986602783
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5647963285446167
+      Pitch: 1.3697965145111084
       Target Frame: <Fixed Frame>
-      Yaw: 0
+      Yaw: 5.03316068649292
     Saved:
       - Class: rviz/Orbit
         Distance: 402.884033203125
@@ -263,5 +282,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1386
-  X: 646
-  Y: 43
+  X: 534
+  Y: 27
