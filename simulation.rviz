@@ -10,7 +10,6 @@ Panels:
         - /RobotModel1
         - /MarkerArray4
         - /MarkerArray5
-        - /MarkerArray6
       Splitter Ratio: 0.579365074634552
     Tree Height: 694
   - Class: rviz/Selection
@@ -90,22 +89,6 @@ Visualization Manager:
       Value: true
     - Class: rviz/MarkerArray
       Enabled: true
-      Marker Topic: /rviz/historys
-      Name: Historys
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /rviz/predicts
-      Name: Predicts
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
       Marker Topic: /rviz/sur_accel_plot
       Name: MarkerArray
       Namespaces:
@@ -140,22 +123,6 @@ Visualization Manager:
         5: true
         6: true
         7: true
-        8: true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /rviz/model_pred_path
-      Name: MarkerArray
-      Namespaces:
-        1: true
-        2: true
-        3: true
-        4: true
-        5: true
-        6: true
-        7: true
-        8: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -170,7 +137,6 @@ Visualization Manager:
         5: true
         6: true
         7: true
-        8: true
       Queue Size: 100
       Value: true
   Enabled: true
@@ -201,7 +167,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 185.58477783203125
+      Distance: 170.11654663085938
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -209,17 +175,17 @@ Visualization Manager:
         Value: false
       Field of View: 0.7853981852531433
       Focal Point:
-        X: 68.72118377685547
-        Y: 48.62479019165039
-        Z: -2.7477447986602783
+        X: 59.965782165527344
+        Y: 48.51239776611328
+        Z: -3.2826037406921387
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.3697965145111084
+      Pitch: 1.4197964668273926
       Target Frame: <Fixed Frame>
-      Yaw: 5.03316068649292
+      Yaw: 5.048161029815674
     Saved:
       - Class: rviz/Orbit
         Distance: 402.884033203125
