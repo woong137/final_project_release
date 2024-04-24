@@ -10,6 +10,7 @@ Panels:
         - /RobotModel1
         - /MarkerArray4
         - /MarkerArray5
+        - /MarkerArray6
       Splitter Ratio: 0.579365074634552
     Tree Height: 694
   - Class: rviz/Selection
@@ -133,10 +134,6 @@ Visualization Manager:
       Name: MarkerArray
       Namespaces:
         1: true
-        10: true
-        11: true
-        12: true
-        13: true
         2: true
         3: true
         4: true
@@ -144,7 +141,6 @@ Visualization Manager:
         6: true
         7: true
         8: true
-        9: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -153,10 +149,6 @@ Visualization Manager:
       Name: MarkerArray
       Namespaces:
         1: true
-        10: true
-        11: true
-        12: true
-        13: true
         2: true
         3: true
         4: true
@@ -164,7 +156,21 @@ Visualization Manager:
         6: true
         7: true
         8: true
-        9: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /rviz/kalman_history_path
+      Name: MarkerArray
+      Namespaces:
+        1: true
+        2: true
+        3: true
+        4: true
+        5: true
+        6: true
+        7: true
+        8: true
       Queue Size: 100
       Value: true
   Enabled: true
