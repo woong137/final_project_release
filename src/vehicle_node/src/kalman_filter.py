@@ -38,6 +38,7 @@ class Extended_KalmanFilter():
         self.inv = np.linalg.inv
 
         self.likelihood = 1.0
+        self.threshold_r = 1
 
     def predict(self, u=None, JA=None, F=None, Q=None):
 
@@ -110,10 +111,11 @@ class CTRA():
         x : [x, y, v, a, theta, theta_rate]
         """
         self.dt = dt
+        self.threshold_r = 1
 
     def step(self, x):
 
-        if np.abs(x[5]) > 0.1:
+        if np.abs(x[5]) > self.threshold_r:
             self.x = [x[0]+x[2]/x[5]*(np.sin(x[4]+x[5]*self.dt) -
                                       np.sin(x[4])) +
                       x[2]/(x[5]**2)*(np.cos(x[4]+x[5]*self.dt) +
@@ -153,7 +155,7 @@ class CTRA():
         r = x[5]
 
         # upper
-        if np.abs(r) > 0.1:
+        if np.abs(r) > self.threshold_r:
             JA_ = [[1, 0, (np.sin(yaw+r*dt)-np.sin(yaw))/r, (-np.cos(yaw)+np.cos(yaw+r*dt)+r*dt*np.sin(yaw+r*dt))/r**2,
                     ((r*v+a*r*dt)*np.cos(yaw+r*dt)-a*np.sin(yaw+r*dt) -
                      v*r*np.cos(yaw)+a*np.sin(yaw))/r**2,
@@ -188,7 +190,7 @@ class CTRA():
         r = x[5]
 
         # upper
-        if np.abs(r) > 0.1:
+        if np.abs(r) > self.threshold_r:
 
             JH_ = [[1, 0, (np.sin(yaw+r*dt)-np.sin(yaw))/r, (-np.cos(yaw)+np.cos(yaw+r*dt)+r*dt*np.sin(yaw+r*dt))/r**2,
                     ((r*v+a*r*dt)*np.cos(yaw+r*dt)-a*np.sin(yaw+r*dt) -
@@ -263,8 +265,8 @@ def simulation(sample):
         x = [pose[i, 0], pose[i, 1], vel[i], a[i], theta[i], theta_rate[i]]
         z = [pose[i, 0], pose[i, 1], vel[i], theta[i]]
 
-        kf.predict(Q=np.diag([1, 1, 1, 10, 10, 100]))
-        kf.correction(z=z, R=np.diag([1, 1, 1, 1]))
+        kf.predict(Q=np.diag([1, 1, 1, 1, 1, 0.1]))
+        kf.correction(z=z, R=np.diag([1, 1, 1, 10]))
 
         model_kf = copy.deepcopy(model)
 

@@ -23,6 +23,8 @@ from geometry_msgs.msg import Twist, Point32, PolygonStamped, Polygon, Vector3, 
 from visualization_msgs.msg import MarkerArray, Marker
 
 from std_msgs.msg import Float32, Float64, Header, ColorRGBA, UInt8, String, Float32MultiArray, Int32MultiArray
+from nav_msgs.msg import Path
+from geometry_msgs.msg import PoseStamped
 
 
 class Simulation(object):
@@ -53,6 +55,8 @@ class Simulation(object):
             self.env.run()
             self.pub_track()
             self.pub_map()
+            self.pub_kf_pred()
+            self.pub_model_pred()
 
             self.delete_agent()
 
@@ -174,8 +178,8 @@ class Simulation(object):
             text.action = Marker.ADD
             text.color = ColorRGBA(1, 1, 1, 1)
             text.scale.z = 5
-            text.text = str(id_) + " x" + str(round(self.env.vehicles[id_].x, 2)) + " y" + str(
-                round(self.env.vehicles[id_].y, 2))
+            text.text = str(id_) + " (" + str(round(self.env.vehicles[id_].x, 2)) + ", " + str(
+                round(self.env.vehicles[id_].y, 2)) + ")"
             text.pose.position = Point(
                 self.env.vehicles[id_].x, self.env.vehicles[id_].y, 5)
 
@@ -219,6 +223,66 @@ class Simulation(object):
 
         self.map_plot.publish(Maps)
 
+    def pub_kf_pred(self):
+        Paths = MarkerArray()
+
+        for obj_id, pred_data in self.env.kf_pred_dict.items():
+            path = Marker()
+            path.header.frame_id = "base_link"
+            path.header.stamp = rospy.Time.now()
+            path.ns = str(obj_id)
+            path.id = obj_id
+            path.type = Marker.LINE_STRIP
+            path.action = Marker.ADD
+            path.pose.orientation.w = 1.0
+            path.scale.x = 0.7
+            path.color.a = 1.0  # Alpha
+            path.color.r = 0.0  # Red
+            path.color.g = 1.0  # Green
+            path.color.b = 0.0  # Blue
+
+            # pred_data: [[x, y, v, a, theta, theta_rate],...]
+            for i in range(len(pred_data)):
+                point = Point()
+                point.x = pred_data[i][0]
+                point.y = pred_data[i][1]
+                point.z = 0
+                path.points.append(point)
+
+            Paths.markers.append(path)
+
+        self.kf_pred_path.publish(Paths)
+
+    def pub_model_pred(self):
+        Paths = MarkerArray()
+
+        for obj_id, pred_data in self.env.model_pred_dict.items():
+            path = Marker()
+            path.header.frame_id = "base_link"
+            path.header.stamp = rospy.Time.now()
+            path.ns = str(obj_id)
+            path.id = obj_id
+            path.type = Marker.LINE_STRIP
+            path.action = Marker.ADD
+            path.pose.orientation.w = 1.0
+            path.scale.x = 0.7
+            path.color.a = 1.0  # Alpha
+            path.color.r = 1.0  # Red
+            path.color.g = 0.0  # Green
+            path.color.b = 0.0  # Blue
+
+            # pred_data: [[x, y, v, a, theta, theta_rate],...]
+            for i in range(len(pred_data)):
+                point = Point()
+                point.x = pred_data[i][0]
+                point.y = pred_data[i][1]
+                point.z = 0
+                path.points.append(point)
+
+            Paths.markers.append(path)
+
+        self.model_pred_path.publish(Paths)
+
     def set_subscriber(self):
         rospy.Subscriber('/cmd_vel', Twist, self.callback_plot, queue_size=1)
 
@@ -240,6 +304,12 @@ class Simulation(object):
         # Map Point
         self.map_plot = rospy.Publisher(
             '/rviz/maps', MarkerArray, queue_size=1)
+
+        self.kf_pred_path = rospy.Publisher(
+            '/rviz/kf_pred_path', MarkerArray, queue_size=1)
+
+        self.model_pred_path = rospy.Publisher(
+            '/rviz/model_pred_path', MarkerArray, queue_size=1)
 
 
 if __name__ == '__main__':

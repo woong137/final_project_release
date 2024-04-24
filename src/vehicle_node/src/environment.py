@@ -27,18 +27,20 @@ from std_msgs.msg import Float32, Float64, Header, ColorRGBA, UInt8, String, Flo
 
 
 class Environments(object):
-    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_saved_data=10):
+    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_kalman_data=10, t_pred=1):
 
         self.spawn_id = 0
         self.vehicles = {}
         self.int_pt_list = {}
         self.sensor_info_dict = {}
         self.kalman_filter_dict = {}
-        self.pred_dict = {}
+        self.kf_pred_dict = {}
+        self.model_pred_dict = {}
         self.min_num_agent = min_num_agent
         self.dt = dt
         self.course_idx = course_idx
-        self.num_saved_data = num_saved_data
+        self.num_kalman_data = num_kalman_data
+        self.t_pred = t_pred
 
         self.initialize()
 
@@ -172,8 +174,8 @@ class Environments(object):
                     else:
                         # 존재하지 않으면 새로운 키-값 쌍 추가
                         self.sensor_info_dict[obj_id] = [[x, y, h, v]]
-                    # obj_id당 최대 self.num_saved_data개까지만 저장 (나중에 a, yaw_rate 추가한 후 마지막 항은 사용 X)
-                    if len(self.sensor_info_dict[obj_id]) > self.num_saved_data:
+                    # obj_id당 최대 self.num_kalman_data개까지만 저장 (나중에 a, yaw_rate 추가한 후 마지막 항은 사용 X)
+                    if len(self.sensor_info_dict[obj_id]) > self.num_kalman_data:
                         self.sensor_info_dict[obj_id].pop(0)
 
                 self.vehicles[id_].step_manual(ax=0.2, steer=0)
@@ -188,8 +190,9 @@ class Environments(object):
                 for i in range(len(self.sensor_info_dict[id_])-1):
                     x1, y1, h1, v1, *_ = self.sensor_info_dict[id_][i]
                     x2, y2, h2, v2, *_ = self.sensor_info_dict[id_][i+1]
-                    a = ((v2 - v1) / self.dt)
+                    a = (v2 - v1) / self.dt
                     yaw_rate = (h2 - h1) / self.dt
+                    yaw_rate = np.arctan2(np.sin(yaw_rate), np.cos(yaw_rate))
                     if len(self.sensor_info_dict[id_][i]) < 6:
                         self.sensor_info_dict[id_][i].append(a)
                         self.sensor_info_dict[id_][i].append(yaw_rate)
@@ -197,9 +200,11 @@ class Environments(object):
                         self.sensor_info_dict[id_][i][4] = a
                         self.sensor_info_dict[id_][i][5] = yaw_rate
 
+                #######################칼만 필터####################################
+
                 # x_init = [x, y, v, a, theta, theta_rate]
                 x_init = [self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0]
-                        [3], self.sensor_info_dict[id_][0][4], self.sensor_info_dict[id_][0][2], self.sensor_info_dict[id_][0][5]]
+                          [3], 0, self.sensor_info_dict[id_][0][2], 0]
 
                 # Kalman Filter를 활용하여, 각 agent의 상태를 추정
                 model = CTRA(self.dt)
@@ -212,35 +217,43 @@ class Environments(object):
                 kf.JH = model.JH
                 kf.x = x_init
 
-                X = []
+                X = [x_init]
                 for i in range(len(self.sensor_info_dict[id_]) - 1):
                     # x = [x, y, v, a, theta, theta_rate]
                     # z = [x, y, v, theta]
                     x = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
-                        self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][4],
-                        self.sensor_info_dict[id_][i][2], self.sensor_info_dict[id_][i][5]]
+                         self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][4],
+                         self.sensor_info_dict[id_][i][2], self.sensor_info_dict[id_][i][5]]
                     z = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
-                        self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][2]]
-                    kf.predict(Q=np.diag([1, 1, 1, 10, 10, 100]))
-                    kf.correction(z=z, R=np.diag([1, 1, 1, 1]))
+                         self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][2]]
+                    kf.predict(Q=np.diag([1, 1, 1, 100, 100, 100]))
+                    kf.correction(z=z, R=np.diag([1, 1, 0.01, 0.01]))
 
                     model_kf = copy.deepcopy(model)
-
-                    XX = model_kf.pred(kf.x, t_pred=2)
-                    YY = model.pred(x, t_pred=2)
+                    # X: Kalman Filter로 추정한 상태, XX: Kalman Filter로 추정한 상태의 예측값, YY: 실제 상태의 예측값
+                    XX = model_kf.pred(kf.x, self.t_pred)
+                    YY = model.pred(x, self.t_pred)
 
                     X.append(kf.x)
+                ###########################################################################
 
-                # X: Kalman Filter로 추정한 상태, XX: Kalman Filter로 추정한 상태의 예측값, YY: 실제 상태의 예측값
-                print(X)
-                print(self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1])
-                print(self.sensor_info_dict[id_][-1][0], self.sensor_info_dict[id_][-1][1])
-                print(XX[:, 0], XX[:, 1])
-                print(YY[:, 0], YY[:, 1])
-                print("====================")
+                # 해당 agent의 Kalman Filter 결과 저장
+                # {obj_id: [x, y, v, a, theta, theta_rate] * (t_pred / self.dt), ...}
+                self.kalman_filter_dict[id_] = X
+                self.kf_pred_dict[id_] = XX
+                self.model_pred_dict[id_] = YY
 
-
-        # print(self.sensor_info_dict)
+            if id_ == 1:
+                print("------sensor_info_global------")
+                print(sensor_info_global[0])
+                print("------sensor_info_dict------")
+                print(self.sensor_info_dict[1])
+                print("------kalman_filter_dict------")
+                print(self.kalman_filter_dict[1] if 1 in self.kalman_filter_dict else [])
+                print("------kf_pred_dict------")
+                print(self.kf_pred_dict[1] if 1 in self.kf_pred_dict else [])
+                print(len(self.sensor_info_dict[1]))
+                print("===============================")
 
     def respawn(self):
         if len(self.vehicles) < self.min_num_agent:
