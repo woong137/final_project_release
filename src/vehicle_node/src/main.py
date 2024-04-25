@@ -179,7 +179,7 @@ class Simulation(object):
             text.action = Marker.ADD
             text.color = ColorRGBA(1, 1, 1, 1)
             text.scale.z = 5
-            text.text = str(id_)
+            text.text = str(id_) + str(round(self.env.vehicles[id_].v,2)) + ")"
             text.pose.position = Point(
                 self.env.vehicles[id_].x, self.env.vehicles[id_].y, 5)
 

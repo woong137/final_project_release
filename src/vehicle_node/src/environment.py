@@ -28,7 +28,7 @@ from std_msgs.msg import Float32, Float64, Header, ColorRGBA, UInt8, String, Flo
 
 
 class Environments(object):
-    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_kalman_data=10, t_pred=1.5):
+    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_kalman_data=10, t_pred=2.0):
 
         self.spawn_id = 0
         self.vehicles = {}
@@ -42,7 +42,10 @@ class Environments(object):
         self.course_idx = course_idx
         self.num_kalman_data = num_kalman_data
         self.t_pred = t_pred
-        self.check_intersection_distance = 10
+        self.check_intersection_distance = 20
+        self.curvature_speed_factor = 0.01
+        self.k_p = 5.0
+        self.v_max = 8.0
 
         self.initialize()
 
@@ -202,11 +205,6 @@ class Environments(object):
                                             (self.path_0[i][1] - self.path_0[i-1][1])**2)
                     if distance > self.check_intersection_distance:
                         break
-                self.vehicles[id_].step_manual(ax=1, steer=0)
-
-            if id_ > 0:
-                self.vehicles[id_].step_auto(
-                    self.vehicles, self.int_pt_list[id_])
 
             # self.sensor_info_dict에 a와 yaw_rate 추가
             # self.sensor_info_dict[id_]: [[x, y, h, v, a, yaw_rate], ...]
@@ -273,15 +271,36 @@ class Environments(object):
                 self.kalman_filter_dict[id_] = X
                 self.kf_pred_dict[id_] = traj
 
-                """
-                check intersection
-                다른 agent의 예측 경로와 0번 차량의 실제 경로를 비교하여 충돌 여부 확인
-                """
-                path_id_ = []
-                for info in self.kf_pred_dict[id_]:
-                    path_id_.append((info[0], info[1]))
+            """
+            Control
+            """
+            if id_ == 0:
+                # 곡률 반지름에 따른 목표 속도 계산
+                radius_of_curvature_avg = np.mean(
+                    [info[3] for info in local_lane_info])
+                v_cur = self.vehicles[id_].v
+                v_target = self.curvature_speed_factor * radius_of_curvature_avg
 
-                print(find_intersections_with_indices(self.path_0, path_id_))
+                # 다른 agent의 예측 경로와 SDV의 실제 경로를 비교하여 충돌 여부 확인
+                for kf_pred in self.kf_pred_dict.values():
+                    path_id_ = []
+                    for info in kf_pred:
+                        path_id_.append((info[0], info[1]))
+                    intersections = find_intersections_with_indices(
+                        self.path_0, path_id_)
+                    print(intersections)
+                    if len(intersections) > 0:
+                        print("Collision detected")
+                        v_target = 0
+                        break
+                v_target = np.clip(v_target, 0, self.v_max)
+                ax = self.k_p * (v_target - v_cur)
+                # SDV의 제어 입력
+                self.vehicles[id_].step_manual(ax, steer=0)
+
+            if id_ > 0:
+                self.vehicles[id_].step_auto(
+                    self.vehicles, self.int_pt_list[id_])
 
     def respawn(self):
         if len(self.vehicles) < self.min_num_agent:
