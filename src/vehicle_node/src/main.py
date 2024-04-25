@@ -179,7 +179,8 @@ class Simulation(object):
             text.action = Marker.ADD
             text.color = ColorRGBA(1, 1, 1, 1)
             text.scale.z = 5
-            text.text = str(id_) + str(round(self.env.vehicles[id_].v,2)) + ")"
+            text.text = str(id_) + \
+                "(" + str(round(self.env.vehicles[id_].v, 2)) + ")"
             text.pose.position = Point(
                 self.env.vehicles[id_].x, self.env.vehicles[id_].y, 5)
 
@@ -286,7 +287,6 @@ class Simulation(object):
             p.z = 0.0
             marker_msg.points.append(p)
         self.SDV_path.publish(marker_msg)
-
 
     # def pub_kalman_history(self):
     #     Paths = MarkerArray()

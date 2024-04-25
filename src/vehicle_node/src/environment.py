@@ -226,7 +226,7 @@ class Environments(object):
                 IMM Filtering
                 """
                 num_of_model = 2
-                mat_trans = np.array([[0.85, 0.15], [0.15, 0.85]])
+                mat_trans = np.array([[0.95, 0.05], [0.05, 0.95]])
                 mu = [1.0, 0.0]
 
                 filters = [Extended_KalmanFilter(
