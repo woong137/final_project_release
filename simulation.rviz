@@ -63,7 +63,6 @@ Visualization Manager:
         5: true
         6: true
         7: true
-        9: true
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
@@ -83,29 +82,29 @@ Visualization Manager:
       Queue Size: 100
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /rviz/sur_accel_plot
       Name: accel_plot
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /rviz/sur_decel_plot
       Name: decel_plot
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/MarkerArray
-      Enabled: true
+      Enabled: false
       Marker Topic: /rviz/sur_v_plot
       Name: v_plot
       Namespaces:
-        "": true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /rviz/SDV_path
