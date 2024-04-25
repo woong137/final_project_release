@@ -226,7 +226,7 @@ class Environments(object):
                 IMM Filtering
                 """
                 num_of_model = 2
-                mat_trans = np.array([[0.95, 0.05], [0.05, 0.95]])
+                mat_trans = np.array([[0.85, 0.15], [0.15, 0.85]])
                 mu = [1.0, 0.0]
 
                 filters = [Extended_KalmanFilter(
@@ -288,7 +288,6 @@ class Environments(object):
                         path_id_.append((info[0], info[1]))
                     intersections = find_intersections_with_indices(
                         self.path_0, path_id_)
-                    print(intersections)
                     if len(intersections) > 0:
                         print("Collision detected")
                         v_target = 0
