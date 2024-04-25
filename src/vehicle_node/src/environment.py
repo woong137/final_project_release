@@ -42,6 +42,7 @@ class Environments(object):
         self.course_idx = course_idx
         self.num_kalman_data = num_kalman_data
         self.t_pred = t_pred
+        self.check_intersection_distance = 10
 
         self.initialize()
 
@@ -155,7 +156,9 @@ class Environments(object):
                 # - SDV info : self.vehicles[id_].~ [x, y, h, v, s, d]
                 # - Global map info : self.map_pt / self.connectivity\
 
-                # local frame to global frame
+                """
+                sensor_info: local frame to global frame
+                """
                 sensor_info_global = []  # [[obj id, rel x, rel y, rel h, rel vx, rel vy], …]
                 for i in (sensor_info_local):
                     obj_id, rel_x, rel_y, rel_h, rel_vx, rel_vy = i
@@ -164,6 +167,9 @@ class Environments(object):
                         rel_x, rel_y, rel_h, rel_vx, rel_vy)
                     sensor_info_global.append([obj_id, x, y, h, vx, vy])
 
+                """
+                self.num_kalman_data개의 타입 스탬프 만큼의 데이터를 저장
+                """
                 # self.sensor_info_dict에 각 agent의 정보 저장
                 for info in (sensor_info_global):
                     obj_id, x, y, h, vx, vy = info
@@ -179,7 +185,24 @@ class Environments(object):
                     if len(self.sensor_info_dict[obj_id]) > self.num_kalman_data:
                         self.sensor_info_dict[obj_id].pop(0)
 
-                self.vehicles[id_].step_manual(ax=0.2, steer=0)
+                """
+                local_lane_info를 global frame으로 변환 후 self.path_0에 저장
+                """
+                # local_lane_info를 global로 변환 후 self.path_0에 저장, self.check_intersection_distance만큼만 저장
+                local_lane_info = self.vehicles[id_].get_local_path()
+                distance = 0
+                self.path_0 = []
+                for i in range(len(local_lane_info)):
+                    x, y, h, R = local_lane_info[i]
+                    x, y, h, *_ = local_to_global(
+                        self.vehicles[id_].x, self.vehicles[id_].y, self.vehicles[id_].h, self.vehicles[id_].v, x, y, h, 0, 0)
+                    self.path_0.append((x, y))
+                    if i > 0:
+                        distance += np.sqrt((self.path_0[i][0] - self.path_0[i-1][0])**2 +
+                                            (self.path_0[i][1] - self.path_0[i-1][1])**2)
+                    if distance > self.check_intersection_distance:
+                        break
+                self.vehicles[id_].step_manual(ax=1, steer=0)
 
             if id_ > 0:
                 self.vehicles[id_].step_auto(
@@ -250,6 +273,15 @@ class Environments(object):
                 self.kalman_filter_dict[id_] = X
                 self.kf_pred_dict[id_] = traj
 
+                """
+                check intersection
+                다른 agent의 예측 경로와 0번 차량의 실제 경로를 비교하여 충돌 여부 확인
+                """
+                path_id_ = []
+                for info in self.kf_pred_dict[id_]:
+                    path_id_.append((info[0], info[1]))
+
+                print(find_intersections_with_indices(self.path_0, path_id_))
 
     def respawn(self):
         if len(self.vehicles) < self.min_num_agent:
