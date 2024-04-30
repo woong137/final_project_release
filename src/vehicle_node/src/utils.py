@@ -2,6 +2,37 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import comb
 
+def get_closest_point(path, current_position):
+    """
+    Find the closest point on a path to the current position of the vehicle
+    """
+    # Convert the path and current position to NumPy arrays
+    path_array = np.array(path)
+    current_position_array = np.array(current_position)
+
+    # Calculate the distance between each point on the path and the current position
+    distances = np.sqrt(np.sum((path_array - current_position_array)**2, axis=1))
+
+    # Find the index of the closest point
+    closest_point_index = np.argmin(distances)
+
+    # Get the closest point
+    closest_point = path[closest_point_index]
+
+    return closest_point_index, closest_point
+
+def local_to_global(base_x, base_y, base_yaw, base_v, local_x, local_y, local_yaw, local_vx, local_vy):
+    """
+    Convert local coordinates to global coordinates
+    """
+    X = base_x + local_x * np.cos(base_yaw) - local_y * np.sin(base_yaw)
+    Y = base_y + local_x * np.sin(base_yaw) + local_y * np.cos(base_yaw)
+    Yaw = base_yaw + local_yaw
+    Yaw = np.arctan2(np.sin(Yaw), np.cos(Yaw))
+    VX = base_v * np.cos(base_yaw) + local_vx * np.cos(base_yaw) - local_vy * np.sin(base_yaw)
+    VY = base_v * np.sin(base_yaw) + local_vx * np.sin(base_yaw) + local_vy * np.cos(base_yaw)
+
+    return X, Y, Yaw, VX, VY
 
 def get_cartesian(s, d, mapx, mapy, maps):
     """
