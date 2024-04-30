@@ -56,7 +56,8 @@ class Simulation(object):
             self.pub_track()
             self.pub_map()
             self.pub_kf_pred()
-            self.pub_model_pred()
+            # self.pub_kalman_history()
+            self.pub_SDV_path()
 
             self.delete_agent()
 
@@ -178,8 +179,8 @@ class Simulation(object):
             text.action = Marker.ADD
             text.color = ColorRGBA(1, 1, 1, 1)
             text.scale.z = 5
-            text.text = str(id_) + " (" + str(round(self.env.vehicles[id_].x, 2)) + ", " + str(
-                round(self.env.vehicles[id_].y, 2)) + ")"
+            text.text = str(id_) + \
+                "(" + str(round(self.env.vehicles[id_].v, 2)) + ")"
             text.pose.position = Point(
                 self.env.vehicles[id_].x, self.env.vehicles[id_].y, 5)
 
@@ -253,35 +254,69 @@ class Simulation(object):
 
         self.kf_pred_path.publish(Paths)
 
-    def pub_model_pred(self):
-        Paths = MarkerArray()
+    def pub_SDV_path(self):
+        # path_msg = Path()
+        # path_msg.header.frame_id = "base_link"  # Change the frame_id as needed
 
-        for obj_id, pred_data in self.env.model_pred_dict.items():
-            path = Marker()
-            path.header.frame_id = "base_link"
-            path.header.stamp = rospy.Time.now()
-            path.ns = str(obj_id)
-            path.id = obj_id
-            path.type = Marker.LINE_STRIP
-            path.action = Marker.ADD
-            path.pose.orientation.w = 1.0
-            path.scale.x = 0.7
-            path.color.a = 1.0  # Alpha
-            path.color.r = 1.0  # Red
-            path.color.g = 0.0  # Green
-            path.color.b = 0.0  # Blue
+        # for point in self.env.path_0:
+        #     pose = PoseStamped()
+        #     pose.pose.position.x = point[0]
+        #     pose.pose.position.y = point[1]
+        #     pose.pose.position.z = 0.0
+        #     pose.pose.orientation.x = 0.0
+        #     pose.pose.orientation.y = 0.0
+        #     pose.pose.orientation.z = 0.0
+        #     pose.pose.orientation.w = 1.0
+        #     path_msg.poses.append(pose)
 
-            # pred_data: [[x, y, v, a, theta, theta_rate],...]
-            for i in range(len(pred_data)):
-                point = Point()
-                point.x = pred_data[i][0]
-                point.y = pred_data[i][1]
-                point.z = 0
-                path.points.append(point)
+        # self.SDV_path.publish(path_msg)
+        marker_msg = Marker()
+        marker_msg.header.frame_id = "base_link"  # Change the frame_id as needed
+        marker_msg.type = Marker.LINE_STRIP
+        marker_msg.action = Marker.ADD
+        marker_msg.scale.x = 1.0  # Thickness of the line, adjust as needed
+        marker_msg.color.r = 0.0
+        marker_msg.color.g = 1.0
+        marker_msg.color.b = 0.0
+        marker_msg.color.a = 1.0
 
-            Paths.markers.append(path)
+        for point in self.env.path_0:
+            p = Point()
+            p.x = point[0]
+            p.y = point[1]
+            p.z = 0.0
+            marker_msg.points.append(p)
+        self.SDV_path.publish(marker_msg)
 
-        self.model_pred_path.publish(Paths)
+    # def pub_kalman_history(self):
+    #     Paths = MarkerArray()
+
+    #     for obj_id, pred_data in self.env.kalman_filter_dict.items():
+    #         path = Marker()
+    #         path.header.frame_id = "base_link"
+    #         path.header.stamp = rospy.Time.now()
+    #         path.ns = str(obj_id)
+    #         path.id = obj_id
+    #         path.type = Marker.LINE_STRIP
+    #         path.action = Marker.ADD
+    #         path.pose.orientation.w = 1.0
+    #         path.scale.x = 0.7
+    #         path.color.a = 1.0  # Alpha
+    #         path.color.r = 0.0  # Red
+    #         path.color.g = 0.0  # Green
+    #         path.color.b = 1.0  # Blue
+
+    #         # pred_data: [[x, y, v, a, theta, theta_rate],...]
+    #         for i in range(len(pred_data)):
+    #             point = Point()
+    #             point.x = pred_data[i][0]
+    #             point.y = pred_data[i][1]
+    #             point.z = 0
+    #             path.points.append(point)
+
+    #         Paths.markers.append(path)
+
+    #     self.kalman_history_path.publish(Paths)
 
     def set_subscriber(self):
         rospy.Subscriber('/cmd_vel', Twist, self.callback_plot, queue_size=1)
@@ -297,19 +332,16 @@ class Simulation(object):
             '/rviz/sur_accel_plot', MarkerArray, queue_size=1)
         self.sur_decel_plot = rospy.Publisher(
             '/rviz/sur_decel_plot', MarkerArray, queue_size=1)
-
         self.text_plot = rospy.Publisher(
             '/rviz/text', MarkerArray, queue_size=1)
-
-        # Map Point
         self.map_plot = rospy.Publisher(
             '/rviz/maps', MarkerArray, queue_size=1)
-
         self.kf_pred_path = rospy.Publisher(
             '/rviz/kf_pred_path', MarkerArray, queue_size=1)
-
-        self.model_pred_path = rospy.Publisher(
-            '/rviz/model_pred_path', MarkerArray, queue_size=1)
+        # self.kalman_history_path = rospy.Publisher(
+        #     '/rviz/kalman_history_path', MarkerArray, queue_size=1)
+        self.SDV_path = rospy.Publisher(
+            '/rviz/SDV_path', Marker, queue_size=1)
 
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@ from IPython.display import HTML
 from utils import *
 from agent import agent
 from kalman_filter import *
+from imm_filter import *
 
 
 import tf
@@ -27,7 +28,7 @@ from std_msgs.msg import Float32, Float64, Header, ColorRGBA, UInt8, String, Flo
 
 
 class Environments(object):
-    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_kalman_data=10, t_pred=1):
+    def __init__(self, course_idx, dt=0.1, min_num_agent=8, num_kalman_data=10, t_pred=2.0):
 
         self.spawn_id = 0
         self.vehicles = {}
@@ -41,6 +42,10 @@ class Environments(object):
         self.course_idx = course_idx
         self.num_kalman_data = num_kalman_data
         self.t_pred = t_pred
+        self.check_intersection_distance = 20
+        self.curvature_speed_factor = 0.01
+        self.k_p = 5.0
+        self.v_max = 8.0
 
         self.initialize()
 
@@ -154,7 +159,9 @@ class Environments(object):
                 # - SDV info : self.vehicles[id_].~ [x, y, h, v, s, d]
                 # - Global map info : self.map_pt / self.connectivity\
 
-                # local frame to global frame
+                """
+                sensor_info: local frame to global frame
+                """
                 sensor_info_global = []  # [[obj id, rel x, rel y, rel h, rel vx, rel vy], …]
                 for i in (sensor_info_local):
                     obj_id, rel_x, rel_y, rel_h, rel_vx, rel_vy = i
@@ -163,6 +170,9 @@ class Environments(object):
                         rel_x, rel_y, rel_h, rel_vx, rel_vy)
                     sensor_info_global.append([obj_id, x, y, h, vx, vy])
 
+                """
+                self.num_kalman_data개의 타입 스탬프 만큼의 데이터를 저장
+                """
                 # self.sensor_info_dict에 각 agent의 정보 저장
                 for info in (sensor_info_global):
                     obj_id, x, y, h, vx, vy = info
@@ -178,11 +188,23 @@ class Environments(object):
                     if len(self.sensor_info_dict[obj_id]) > self.num_kalman_data:
                         self.sensor_info_dict[obj_id].pop(0)
 
-                self.vehicles[id_].step_manual(ax=0.2, steer=0)
-
-            if id_ > 0:
-                self.vehicles[id_].step_auto(
-                    self.vehicles, self.int_pt_list[id_])
+                """
+                local_lane_info를 global frame으로 변환 후 self.path_0에 저장
+                """
+                # local_lane_info를 global로 변환 후 self.path_0에 저장, self.check_intersection_distance만큼만 저장
+                local_lane_info = self.vehicles[id_].get_local_path()
+                distance = 0
+                self.path_0 = []
+                for i in range(len(local_lane_info)):
+                    x, y, h, R = local_lane_info[i]
+                    x, y, h, *_ = local_to_global(
+                        self.vehicles[id_].x, self.vehicles[id_].y, self.vehicles[id_].h, self.vehicles[id_].v, x, y, h, 0, 0)
+                    self.path_0.append((x, y))
+                    if i > 0:
+                        distance += np.sqrt((self.path_0[i][0] - self.path_0[i-1][0])**2 +
+                                            (self.path_0[i][1] - self.path_0[i-1][1])**2)
+                    if distance > self.check_intersection_distance:
+                        break
 
             # self.sensor_info_dict에 a와 yaw_rate 추가
             # self.sensor_info_dict[id_]: [[x, y, h, v, a, yaw_rate], ...]
@@ -200,60 +222,84 @@ class Environments(object):
                         self.sensor_info_dict[id_][i][4] = a
                         self.sensor_info_dict[id_][i][5] = yaw_rate
 
-                #######################칼만 필터####################################
+                """
+                IMM Filtering
+                """
+                num_of_model = 2
+                mat_trans = np.array([[0.85, 0.15], [0.15, 0.85]])
+                mu = [1.0, 0.0]
 
-                # x_init = [x, y, v, a, theta, theta_rate]
-                x_init = [self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0]
-                          [3], 0, self.sensor_info_dict[id_][0][2], 0]
+                filters = [Extended_KalmanFilter(
+                    5, 4), Extended_KalmanFilter(6, 4)]
+                models = [CA(), CTRA()]
 
-                # Kalman Filter를 활용하여, 각 agent의 상태를 추정
-                model = CTRA(self.dt)
+                Q_list = [[0.1, 0.1, 0.1, 0.1, 0.001],
+                          [0.1, 0.1, 0.1, 0.1, 0.001, 0.01]]
 
-                kf = Extended_KalmanFilter(6, 4)
+                x = [np.array([self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0][3], 0, self.sensor_info_dict[id_][0][2]]),
+                     np.array([self.sensor_info_dict[id_][0][0], self.sensor_info_dict[id_][0][1], self.sensor_info_dict[id_][0][3], 0, self.sensor_info_dict[id_][0][2], 0])]
 
-                kf.F = model.step
-                kf.JA = model.JA
-                kf.H = model.H
-                kf.JH = model.JH
-                kf.x = x_init
+                for i in range(len(filters)):
+                    filters[i].F = models[i].step
+                    filters[i].H = models[i].H
+                    filters[i].JA = models[i].JA
+                    filters[i].JH = models[i].JH
+                    filters[i].Q = np.diag(Q_list[i])
+                    filters[i].R = np.diag([0.1, 0.1, 0.1, 0.1])
+                    filters[i].x = x[i]
 
-                X = [x_init]
+                IMM = IMM_filter(filters, mu, mat_trans)
+                MM = [mu]
+                X = [x[1]]
+                Traj = []
+
                 for i in range(len(self.sensor_info_dict[id_]) - 1):
-                    # x = [x, y, v, a, theta, theta_rate]
-                    # z = [x, y, v, theta]
-                    x = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
-                         self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][4],
-                         self.sensor_info_dict[id_][i][2], self.sensor_info_dict[id_][i][5]]
+
                     z = [self.sensor_info_dict[id_][i][0], self.sensor_info_dict[id_][i][1],
                          self.sensor_info_dict[id_][i][3], self.sensor_info_dict[id_][i][2]]
-                    kf.predict(Q=np.diag([1, 1, 1, 100, 100, 100]))
-                    kf.correction(z=z, R=np.diag([1, 1, 0.01, 0.01]))
 
-                    model_kf = copy.deepcopy(model)
-                    # X: Kalman Filter로 추정한 상태, XX: Kalman Filter로 추정한 상태의 예측값, YY: 실제 상태의 예측값
-                    XX = model_kf.pred(kf.x, self.t_pred)
-                    YY = model.pred(x, self.t_pred)
+                    IMM.prediction()
+                    IMM.merging(z)
 
-                    X.append(kf.x)
-                ###########################################################################
+                    traj = IMM.predict(self.t_pred)
+                    Traj.append(traj)
+                    MM.append(IMM.mu.copy())
+                    X.append(IMM.x.copy())
 
                 # 해당 agent의 Kalman Filter 결과 저장
                 # {obj_id: [x, y, v, a, theta, theta_rate] * (t_pred / self.dt), ...}
                 self.kalman_filter_dict[id_] = X
-                self.kf_pred_dict[id_] = XX
-                self.model_pred_dict[id_] = YY
+                self.kf_pred_dict[id_] = traj
 
-            if id_ == 1:
-                print("------sensor_info_global------")
-                print(sensor_info_global[0])
-                print("------sensor_info_dict------")
-                print(self.sensor_info_dict[1])
-                print("------kalman_filter_dict------")
-                print(self.kalman_filter_dict[1] if 1 in self.kalman_filter_dict else [])
-                print("------kf_pred_dict------")
-                print(self.kf_pred_dict[1] if 1 in self.kf_pred_dict else [])
-                print(len(self.sensor_info_dict[1]))
-                print("===============================")
+            """
+            Control
+            """
+            if id_ == 0:
+                # 곡률 반지름에 따른 목표 속도 계산
+                radius_of_curvature_avg = np.mean(
+                    [info[3] for info in local_lane_info])
+                v_cur = self.vehicles[id_].v
+                v_target = self.curvature_speed_factor * radius_of_curvature_avg
+
+                # 다른 agent의 예측 경로와 SDV의 실제 경로를 비교하여 충돌 여부 확인
+                for kf_pred in self.kf_pred_dict.values():
+                    path_id_ = []
+                    for info in kf_pred:
+                        path_id_.append((info[0], info[1]))
+                    intersections = find_intersections_with_indices(
+                        self.path_0, path_id_)
+                    if len(intersections) > 0:
+                        print("Collision detected")
+                        v_target = 0
+                        break
+                v_target = np.clip(v_target, 0, self.v_max)
+                ax = self.k_p * (v_target - v_cur)
+                # SDV의 제어 입력
+                self.vehicles[id_].step_manual(ax, steer=0)
+
+            if id_ > 0:
+                self.vehicles[id_].step_auto(
+                    self.vehicles, self.int_pt_list[id_])
 
     def respawn(self):
         if len(self.vehicles) < self.min_num_agent:
