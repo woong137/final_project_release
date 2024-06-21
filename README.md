@@ -1,5 +1,5 @@
 
-## Code for Intention(LC, LK) Prediction
+## Code for Prediction
 ```
 final_project_release
 ├─ launch
